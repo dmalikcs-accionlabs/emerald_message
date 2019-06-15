@@ -1,0 +1,2 @@
+Use the command line interface to send, receive and poll messages from the emerald message queues
+Emails and other messages are captured via routers and posted into the queues for processing
