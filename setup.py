@@ -36,7 +36,9 @@ setup(
    author_email='dthompson@dynastyse.com',
    install_requires=[
        'pytz>=2019.1',
-       'tzlocal>=1.5.1'
+       'six>=1.12.0',
+       'tzlocal>=1.5.1',
+       'werkzeug>=0.15.4'
    ],
    include_package_data=True,
    url='http://www.dynastyse.com',
