@@ -2,8 +2,6 @@ import argparse
 import os
 import platform
 import sys
-import time
-import json
 import datetime
 import pkg_resources
 
@@ -15,6 +13,7 @@ from emerald_message.version import __version__
 
 MIN_PYTHON_VER_MAJOR = 3
 MIN_PYTHON_VER_MINOR = 6
+
 
 def get_command_info_as_string() -> str:
     the_package = __name__
@@ -39,6 +38,8 @@ def emerald_message_launcher(argv):
     else:
         print('Running on python interpreter version ' +
               str(sys.version_info.major) + '.' + str(sys.version_info.minor))
+        print('\tPlatform: ' + platform.platform() + os.linesep +
+              '\tMachine: ' + platform.machine())
 
     parser = argparse.ArgumentParser(prog=appname,
                                      formatter_class=argparse.RawTextHelpFormatter,
@@ -46,6 +47,9 @@ def emerald_message_launcher(argv):
     parser.add_argument('--version',
                         action='version',
                         version=__version__)
+    parser.add_argument('--test',
+                        action='store',
+                        help='Just an arg')
 
     args = parser.parse_args(None if argv[0:] else ['--help'])
 
@@ -53,6 +57,6 @@ def emerald_message_launcher(argv):
 
     startup_time_utc = datetime.datetime.now(tz=timezone('UTC'))
 
-    logger.logger.warn('Initializing ' + appname + ', startup at ' +
-                       datetime.datetime.strftime(datetime.datetime.now(tz=timezone('UTC')), '%Y%m%dT%H:%M:%S%z'))
-
+    print('Args = ' + str(args.__dict__))
+    logger.logger.warn('Initializing ' + appname + ' Version ' + __version__ + ', startup at ' +
+                       datetime.datetime.strftime(startup_time_utc, '%Y%m%dT%H:%M:%S%z'))

@@ -35,9 +35,13 @@ setup(
    author='Dave Thompson',
    author_email='dthompson@dynastyse.com',
    install_requires=[
+       'azure-mgmt-storage>=4.0.0',
+       'netaddr>=0.7.19',
        'pytz>=2019.1',
        'six>=1.12.0',
+       'spooky>=2.0.0',
        'tzlocal>=1.5.1',
+       'twine>=1.13.0',
        'werkzeug>=0.15.4'
    ],
    include_package_data=True,

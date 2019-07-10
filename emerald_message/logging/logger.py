@@ -2,7 +2,9 @@ import logging
 import logging.handlers
 import sys
 import time
+import datetime
 from typing import Optional
+from pytz import timezone
 
 
 class EmeraldLogger:
@@ -17,6 +19,12 @@ class EmeraldLogger:
     @property
     def logger(self):
         return self._logger
+
+    @staticmethod
+    def get_iso8601_utc_now_string() -> str:
+        return datetime.datetime.strftime(
+            datetime.datetime.now(tz=timezone('UTC')),
+            '%Y%m%dT%H:%M:%S%z')
 
     def __init__(self,
                  logging_module_name: str,
