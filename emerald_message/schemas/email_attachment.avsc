@@ -1,0 +1,20 @@
+{
+  "namespace": "com.dynastyse.emerald.schemas",
+  "name": "EmailAttachment",
+  "type": "record",
+  "doc": "Base64 encoded attachment with intended filename and mimetype",
+  "fields": [
+    {
+      "name": "filename",
+      "type": "string"
+    },
+    {
+      "name": "mimetype",
+      "type": "string"
+    },
+    {
+      "name": "contents_base64",
+      "type": "string"
+    }
+  ]
+}

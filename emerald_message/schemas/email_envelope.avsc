@@ -1,0 +1,25 @@
+{
+  "namespace": "com.dynastyse.emerald.schemas",
+  "name": "EmailEnvelope",
+  "type": "record",
+  "doc": "Sender, receiver(s), subject information for email",
+  "fields": [
+    {
+      "name": "address_from",
+      "type": "string"
+    },
+    {
+      "name": "address_to_collection",
+      "type": "array",
+      "items": "string"
+    },
+    {
+      "name": "message_subject",
+      "type": "string"
+    },
+    {
+      "name": "message_rx_timestamp_iso8601",
+      "type": "string"
+    }
+  ]
+}

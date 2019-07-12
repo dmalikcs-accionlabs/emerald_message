@@ -1,0 +1,25 @@
+{
+  "namespace": "com.dynastyse.emerald.schemas",
+  "name": "EmailContainer",
+  "type": "record",
+  "doc": "Container object encapsulating entire email and any associated attachments",
+  "fields": [
+    {
+      "name": "email_container_metadata",
+      "type": "EmailMessageMetadata"
+    },
+    {
+      "name": "email_envelope",
+      "type": "EmailEnvelope"
+    },
+    {
+      "name": "email_body",
+      "type": "EmailBody"
+    },
+    {
+      "name": "email_attachment_collection",
+      "type": "array",
+      "items": "EmailAttachment"
+    }
+  ]
+}

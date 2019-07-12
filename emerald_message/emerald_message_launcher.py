@@ -12,7 +12,7 @@ from emerald_message.logging.logger import EmeraldLogger
 from emerald_message.version import __version__
 
 MIN_PYTHON_VER_MAJOR = 3
-MIN_PYTHON_VER_MINOR = 6
+MIN_PYTHON_VER_MINOR = 7
 
 
 def get_command_info_as_string() -> str:

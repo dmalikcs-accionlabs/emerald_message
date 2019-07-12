@@ -1,0 +1,39 @@
+{
+  "namespace": "com.dynastyse.emerald.schemas",
+  "name": "EmailMessageMetadata",
+  "type": "record",
+  "doc": "Information about the email and the emerald router tag used to receive it",
+  "fields": [
+    {
+      "name": "router_source_tag",
+      "type": "string"
+    },
+    {
+      "name": "routed_timestamp_iso8601",
+      "type": "string"
+    },
+    {
+      "name": "email_sender_ip",
+      "type": "string"
+    },
+    {
+      "name": "attachment_count",
+      "type": "int",
+      "default": 0
+    },
+    {
+      "name": "email_headers",
+      "type": "string"
+    },
+    {
+      "name": "email_spf_sender_passed",
+      "type": ["boolean", "null"],
+      "default": null
+    },
+    {
+      "name": "email_dkim_sender_passed",
+      "type": ["boolean", "null"],
+      "default": null
+    },
+  ]
+}

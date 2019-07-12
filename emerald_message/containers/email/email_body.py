@@ -1,6 +1,11 @@
 import os
-from typing import NamedTuple, Optional, List
+from dataclasses import dataclass
+from avro.datafile import DataFileWriter, DataFileException, DataFileReader
+from avro.io import DatumReader, DatumWriter
+from typing import Optional, List
 from spooky import hash128
+
+from emerald_message.containers.abstract_container import AbstractContainer
 
 """
 Track the message contents in three ways:
@@ -14,9 +19,45 @@ Use spooky hash v128 for the setup, as the message body could be quite large and
 """
 
 
-class EmailBody(NamedTuple):
+@dataclass(frozen=True)
+class EmailBody(AbstractContainer):
     message_body_text: str
     message_body_html: Optional[str] = None
+
+    @property
+    def message_body_as_lines_list(self) -> List[str]:
+        # in this case the line terminations may not match the platform (i.e. may not be any conversion)
+        #  so strip out any '\r' and then we will have lines to form list
+        return [x for x in self.message_body_text.strip('\r').split('\n')]
+
+    @classmethod
+    def get_avro_schema_filename(cls) -> str:
+        return 'email_body.avsc'
+
+    def write_avro(self,
+                   avro_container_uri: str):
+        if type(avro_container_uri) is not str or len(avro_container_uri) == 0:
+            raise ValueError('Unable to write avro - avro_container_uri parameter' +
+                             ' must be a string specifying container location in writable form')
+        writer = DataFileWriter(open(avro_container_uri, "wb"), DatumWriter(), type(self).get_avro_schema())
+        writer.append({"message_body_text": self.message_body_text,
+                       "message_body_html": self.message_body_html})
+        writer.close()
+
+    @staticmethod
+    def from_avro(avro_container_uri: str):
+        reader = DataFileReader(open(avro_container_uri, "rb"), DatumReader())
+        new_email_body = None
+        for datum_counter, datum in enumerate(reader, start=1):
+            print('Reading datum #' + str(datum_counter))
+            print('The message datum = ' + str(datum))
+            new_email_body = EmailBody(message_body_text=datum['message_body_text'],
+                                       message_body_html=datum['message_body_html'])
+        reader.close()
+        if new_email_body is None:
+            raise DataFileException('Data could not be loaded from AVRO file "' + str(avro_container_uri) +
+                                    '" using schema ' + AbstractContainer.get_avro_schema().name)
+        return new_email_body
 
     @property
     def length_html(self) -> int:
@@ -28,12 +69,6 @@ class EmailBody(NamedTuple):
 
     def __len__(self):
         return self.length_text
-
-    @property
-    def message_body_as_lines_list(self) -> List[str]:
-        # in this case the line terminations may not match the platform (i.e. may not be any conversion)
-        #  so strip out any '\r' and then we will have lines to form list
-        return [x for x in self.message_body_text.strip('\r').split('\n')]
 
     def __str__(self):
         # the HTML rendering is considered the source if present, but this is to do true differencing so show all
