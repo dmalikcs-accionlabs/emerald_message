@@ -1,5 +1,5 @@
 {
-  "namespace": "com.dynastyse.emerald.schemas",
+  "namespace": "com.dynastyse.emerald.schemas.email",
   "name": "EmailBody",
   "type": "record",
   "doc": "Email body always contains text which could be empty string.  HTML element may be omitted complelete if not sent, or could be an empty string",

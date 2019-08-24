@@ -1,5 +1,5 @@
 {
-  "namespace": "com.dynastyse.emerald.schemas",
+  "namespace": "com.dynastyse.emerald.schemas.email",
   "name": "EmailEnvelope",
   "type": "record",
   "doc": "Sender, receiver(s), subject information for email",
@@ -10,8 +10,10 @@
     },
     {
       "name": "address_to_collection",
-      "type": "array",
-      "items": "string"
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
     },
     {
       "name": "message_subject",

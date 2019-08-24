@@ -1,9 +1,8 @@
 import avro.schema
 import json
-from twisted.python.modules import getModule
-
 from abc import ABCMeta, abstractmethod
 
+from emerald_message.avro_schemas.avro_message_schemas import AvroMessageSchemas
 
 class AbstractContainer(metaclass=ABCMeta):
     @classmethod
@@ -13,7 +12,8 @@ class AbstractContainer(metaclass=ABCMeta):
 
     @classmethod
     def get_avro_schema(cls) -> avro.schema.RecordSchema:
-        # all of the schemas are stored in a non-python package directory called schemas
+        # all of the avro_schemas are stored in a package directory called avro_schemas (we use blank __init__.py to
+        #  allow us to do relative imports
         #  we use MANIFEST.in and setup.py config to ensure these get pulled into the distribution files
         #  Find the schema file name identified by the implementing class' schema filename
         #
@@ -31,9 +31,7 @@ class AbstractContainer(metaclass=ABCMeta):
             avro.schema.Parse(
                 json.dumps(
                     json.load(
-                        getModule(__name__).filePath.parent().parent().child('schemas').child(
-                            avro_schema_filename).open(
-                            mode='r')
+                        pkg_resources.open_text(avro_schemas, avro_schema_filename)
                     )
                 )
             )

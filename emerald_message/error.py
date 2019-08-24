@@ -48,3 +48,6 @@ class EmeraldMessageDeserializationError(EmeraldError):
 
 class EmeraldEmailParsingError(EmeraldError):
     pass
+
+class EmeraldSchemaParsingException(EmeraldError):
+    pass

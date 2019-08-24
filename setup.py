@@ -24,9 +24,6 @@ print('Version = ' + VERSION)
 # DET NOTE - remember that all SUB packages must be declared if they are to work when code is run from an egg
 #  installed via easy_install.  Just use the "find_package()" routine to accomplish this
 #
-#  For installing bjoern on Mac OS X, you need to use a pip command with different path:
-# pip install --global-option=build_ext --global-option="-I/usr/local/include/"
-#       --global-option="-L/usr/local/lib"  bjoern
 setup(
     name='emerald_message',
     packages=find_packages(),
@@ -41,10 +38,9 @@ setup(
         'pytz>=2019.1',
         'six>=1.12.0',
         'spooky>=2.0.0',
-        'tzlocal>=1.5.1',
+        'tzlocal>=2.0.0',
         'twine>=1.13.0',
-        'Twisted>=19.2.1',
-        'werkzeug>=0.15.4'
+        'werkzeug>=0.15.5'
     ],
     include_package_data=True,
     zip_safe=True,

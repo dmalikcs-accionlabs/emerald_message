@@ -1,5 +1,5 @@
 {
-  "namespace": "com.dynastyse.emerald.schemas",
+  "namespace": "com.dynastyse.emerald.schemas.email",
   "name": "EmailMessageMetadata",
   "type": "record",
   "doc": "Information about the email and the emerald router tag used to receive it",
@@ -34,6 +34,6 @@
       "name": "email_dkim_sender_passed",
       "type": ["boolean", "null"],
       "default": null
-    },
+    }
   ]
 }

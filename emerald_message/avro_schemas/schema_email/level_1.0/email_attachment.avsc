@@ -1,5 +1,5 @@
 {
-  "namespace": "com.dynastyse.emerald.schemas",
+  "namespace": "com.dynastyse.emerald.schemas.email",
   "name": "EmailAttachment",
   "type": "record",
   "doc": "Base64 encoded attachment with intended filename and mimetype",
