@@ -14,7 +14,7 @@
     },
     {
       "name": "contents_base64",
-      "type": "string"
+      "type": "bytes"
     }
   ]
 }

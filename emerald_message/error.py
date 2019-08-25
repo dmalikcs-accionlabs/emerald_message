@@ -46,6 +46,9 @@ class EmeraldError(RuntimeError, metaclass=ABCMeta):
 class EmeraldMessageDeserializationError(EmeraldError):
     pass
 
+class EmeraldMessageSerializationError(EmeraldError):
+    pass
+
 class EmeraldEmailParsingError(EmeraldError):
     pass
 

@@ -1,12 +1,12 @@
 import os
 from dataclasses import dataclass
-from avro.datafile import DataFileWriter, DataFileException, DataFileReader
-from avro.io import DatumReader, DatumWriter
-from typing import Optional, List
+from typing import Optional, List, NamedTuple
 from spooky import hash128
 
-from emerald_message.containers.abstract_container import AbstractContainer, ContainerSchemaMatchingIdentifier
+from emerald_message.containers.abstract_container import AbstractContainer, ContainerSchemaMatchingIdentifier, \
+    ContainerParameters
 from emerald_message.avro_schemas.avro_message_schema_family import AvroMessageSchemaFamily
+from emerald_message.error import EmeraldMessageSerializationError, EmeraldMessageDeserializationError
 
 """
 Track the message contents in three ways:
@@ -21,7 +21,7 @@ Use spooky hash v128 for the setup, as the message body could be quite large and
 
 
 @dataclass(frozen=True)
-class _EmailBodyParameters:
+class EmailBodyParameters(ContainerParameters):
     message_body_text: str
     message_body_html: Optional[str] = None
 
@@ -29,11 +29,11 @@ class _EmailBodyParameters:
 class EmailBody(AbstractContainer):
     @property
     def message_body_text(self) -> str:
-        return self._container_parameters.message_body_text
+        return self._get_container_parameters().message_body_text
 
     @property
     def message_body_html(self):
-        return self._container_parameters.message_body_html
+        return self._get_container_parameters().message_body_html
 
     @property
     def message_body_as_lines_list(self) -> List[str]:
@@ -48,37 +48,40 @@ class EmailBody(AbstractContainer):
             container_avro_schema_name='EmailBody'
         )
 
+    @classmethod
+    def _get_container_parameters_required_subclass_type(cls):
+        return EmailBodyParameters
+
     def write_avro(self,
                    avro_container_uri: str):
-        if type(avro_container_uri) is not str or len(avro_container_uri) == 0:
-            raise ValueError('Unable to write avro - avro_container_uri parameter' +
-                             ' must be a string specifying container location in writable form')
-        if self.debug:
-            print('Avro schema type = ' + str(type(type(self).get_avro_schema_record().avro_schema)))
-            print('Avro schema = ' + str(type(self).get_avro_schema_record().avro_schema))
-
-        writer = DataFileWriter(open(avro_container_uri, "wb"),
-                                DatumWriter(),
-                                type(self).get_avro_schema_record().avro_schema)
-        if self.debug:
-            print('Opened data file write, html type = ' + type(self.message_body_html).__name__)
-        writer.append({"message_body_text": self.message_body_text,
-                       "message_body_html": self.message_body_html})
-        writer.close()
+        data_as_dictionary = \
+            {
+                "message_body_text": self.message_body_text,
+                "message_body_html": self.message_body_html
+            }
+        type(self)._write_avro_data(self,
+                                    data_as_dictionary=data_as_dictionary,
+                                    avro_container_uri=avro_container_uri)
 
     @staticmethod
-    def from_avro(avro_container_uri: str):
-        reader = DataFileReader(open(avro_container_uri, "rb"), DatumReader())
-        new_email_body = None
-        for datum_counter, datum in enumerate(reader, start=1):
-            print('Reading datum #' + str(datum_counter))
-            print('The message datum = ' + str(datum))
-            new_email_body = EmailBody(message_body_text=datum['message_body_text'],
-                                       message_body_html=datum['message_body_html'])
-        reader.close()
-        if new_email_body is None:
-            raise DataFileException('Data could not be loaded from AVRO file "' + str(avro_container_uri) +
-                                    '" using schema ' + AbstractContainer.get_avro_schema_record().avro_schema_name)
+    def from_avro(avro_container_uri: str,
+                  debug: bool = False):
+        # pass up the exceptions
+        datum_to_load = AbstractContainer._from_avro_generic(avro_container_uri=avro_container_uri)
+
+        try:
+            new_email_body = \
+                EmailBody(container_parameters=
+                          EmailBodyParameters(message_body_text=datum_to_load['message_body_text'],
+                                              message_body_html=datum_to_load['message_body_html']))
+        except KeyError as kex:
+            raise EmeraldMessageDeserializationError(
+                'Unable to load object from AVRO container "' + avro_container_uri +
+                os.linesep + 'Unable to locate one or more keys in the data' +
+                os.linesep + 'Returned data parameter count = ' + str(len(datum_to_load)) +
+                os.linesep + 'Cannot locate key "' + str(kex.args[0]) + '" in data' +
+                os.linesep + 'Key(s) found: ' + ','.join([str(k) for k, v in datum_to_load.items()])
+            )
         return new_email_body
 
     @property
@@ -90,22 +93,19 @@ class EmailBody(AbstractContainer):
         return len(self.message_body_text)
 
     #
-    #  Design note - we would like to use dataclasses because of additional parameters.  However, it is not
-    #  possible to extend and use other variables in a dataclass if you set frozen to true
-    #  Named Tuples have no such rules
+    #  see design note inside the constructor - the parameters really could have been named tuples just
+    #  as easily as dataclass with frozen in this case, because of how we used
+    #  But dataclassses let us subclass for better type checking
     #
     def __init__(self,
-                 message_body_text: str,
-                 message_body_html: Optional[str] = None):
-        super(EmailBody, self).__init__()
+                 container_parameters: ContainerParameters):
         # we want both immutable parameters and ability to extend this class from abstract
         #  as of 201908, only pattern DET sees is to store them in class as we would a named tuple
         #  otherwise we cannot set other instance parameters in here because without separate
         #  instance parameter "container_parameter" we'd end up setting dataclass to true on this actual class
-        self._container_parameters = _EmailBodyParameters(message_body_text=message_body_text,
-                                                          message_body_html=message_body_html)
-
-        print('Message body initializing ' + str(self.__dict__))
+        #
+        print('initializing with ' + str(container_parameters))
+        super(EmailBody, self).__init__(container_parameters=container_parameters)
 
     def __len__(self):
         return self.length_text
