@@ -4,9 +4,9 @@ import platform
 import sys
 import datetime
 import pkg_resources
-import base64
 
 from pytz import timezone
+from netaddr import IPAddress
 
 from emerald_message.exitcode import ExitCode
 from emerald_message.error import EmeraldMessageContainerInitializationError
@@ -16,6 +16,7 @@ from emerald_message.avro_schemas.avro_message_schemas import AvroMessageSchemaF
 from emerald_message.containers.email.email_body import EmailBody, EmailBodyParameters
 from emerald_message.containers.email.email_attachment import EmailAttachment, EmailAttachmentParameters
 from emerald_message.containers.email.email_envelope import EmailEnvelope, EmailEnvelopeParameters
+from emerald_message.containers.email.email_message_metadata import EmailMessageMetadata, EmailMessageMetadataParameters
 
 MIN_PYTHON_VER_MAJOR = 3
 MIN_PYTHON_VER_MINOR = 7
@@ -77,7 +78,7 @@ def emerald_message_launcher(argv):
     if args.list_avro_schemas is True:
         logger.logger.info('Running list avro schema_email')
 
-        # random testing
+        # random testing EmailBody
         try:
             the_email_body = \
                 EmailBody(container_parameters=
@@ -103,22 +104,20 @@ def emerald_message_launcher(argv):
             return ExitCode.CodeError
         else:
             print('The new version = ' + str(new_version))
-            print('Compare test for body = '  + str(new_version==the_email_body))
-            AssertionError(new_version==the_email_body)
+            print('Compare test for body = ' + str(new_version == the_email_body))
+            AssertionError(new_version == the_email_body)
 
-
-        # again
+        # again  EmailEnvelope
         # random testing
         try:
             the_email_envelope = \
-                EmailEnvelope(container_parameters=
-                                EmailEnvelopeParameters(
-                                    address_from='det@go.com',
-                                    address_to_collection=frozenset(['gogetem@dynastyse.com', 'another@gogo.com']),
-                                    message_subject='Big Message',
-                                    message_rx_timestamp_iso8601=
-                                    datetime.datetime.strftime(startup_time_utc, '%Y%m%dT%H:%M:%S%z')
-                                ))
+                EmailEnvelope(container_parameters=EmailEnvelopeParameters(
+                    address_from='det@go.com',
+                    address_to_collection=frozenset(['gogetem@dynastyse.com', 'another@gogo.com']),
+                    message_subject='Big Message',
+                    message_rx_timestamp_iso8601=
+                    datetime.datetime.strftime(startup_time_utc, '%Y%m%dT%H:%M:%S%z')
+                ))
         except EmeraldMessageContainerInitializationError as mex:
             logger.logger.critical('Unable to initialize email test envelope  object' + os.linesep +
                                    'Error details: ' + str(mex.args[0]))
@@ -140,20 +139,57 @@ def emerald_message_launcher(argv):
             return ExitCode.CodeError
         else:
             print('The new version = ' + str(new_version_envelope))
-            print('Compare test for body = '  + str(new_version_envelope==the_email_envelope))
-            AssertionError(new_version_envelope==the_email_envelope)
+            print('Compare test for body = ' + str(new_version_envelope == the_email_envelope))
+            AssertionError(new_version_envelope == the_email_envelope)
 
-        # again
+        # again EmailMessageMetadata
+        # random testing
+        try:
+            the_email_metadata = \
+                EmailMessageMetadata(container_parameters=EmailMessageMetadataParameters(
+                    router_source_tag='Blue',
+                    routed_timestamp_iso8601=datetime.datetime.strftime(startup_time_utc, '%Y%m%dT%H:%M:%S%z'),
+                    email_sender_ip=
+                    IPAddress('10.10.1.1'),
+                    attachment_count=1,
+                    email_headers='Extra headers',
+                    email_spf_sender_passed=True,
+                    email_dkim_sender_passed=None
+                ))
+        except EmeraldMessageContainerInitializationError as mex:
+            logger.logger.critical('Unable to initialize email test attach  object' + os.linesep +
+                                   'Error details: ' + str(mex.args[0]))
+            return ExitCode.CodeError
+        logger.logger.info('email attach test = ' + os.linesep + str(the_email_metadata) + os.linesep)
+        logger.logger.info('AVRO schema namespaces: ' + os.linesep +
+                           os.linesep.join([x for x in sorted(
+                               AvroMessageSchemaFrozen.avro_schema_collection.avro_schema_namespaces)]))
+        # now write
+        output_fn = '/Users/davidthompson/Documents/hello_metadata.avro'
+        the_email_metadata.write_avro(output_fn)
+
+        # now read back
+        try:
+            new_version_metadata = EmailMessageMetadata.from_avro(output_fn)
+        except FileNotFoundError as fex:
+            logger.logger.critical('Unable to locate avro object for reading' + os.linesep +
+                                   'Error details: ' + str(fex.args))
+            return ExitCode.CodeError
+        else:
+            print('The new version = ' + str(new_version_metadata))
+            print('Compare test for body = ' + str(new_version_metadata == the_email_metadata))
+            AssertionError(new_version_metadata == the_email_metadata)
+
+        # again EmailAttachment
         # random testing
         try:
             the_email_attachment = \
-                EmailAttachment(container_parameters=
-                                EmailAttachmentParameters(
-                                    filename='HelloFile',
-                                    mimetype='me',
-                                    contents_base64=
-                                    EmailAttachment.transform_base_64_encode(element='teststring')
-                                ))
+                EmailAttachment(container_parameters=EmailAttachmentParameters(
+                    filename='HelloFile',
+                    mimetype='me',
+                    contents_base64=
+                    EmailAttachment.transform_base_64_encode(element='teststring')
+                ))
         except EmeraldMessageContainerInitializationError as mex:
             logger.logger.critical('Unable to initialize email test attach  object' + os.linesep +
                                    'Error details: ' + str(mex.args[0]))
@@ -175,12 +211,9 @@ def emerald_message_launcher(argv):
             return ExitCode.CodeError
         else:
             print('The new version = ' + str(new_version_attach))
-            print('Compare test for body = '  + str(new_version_attach==the_email_attachment))
-            AssertionError(new_version_attach==the_email_attachment)
-
-
+            print('Compare test for body = ' + str(new_version_attach == the_email_attachment))
+            AssertionError(new_version_attach == the_email_attachment)
 
         return ExitCode.Success
-
 
     return ExitCode.Success

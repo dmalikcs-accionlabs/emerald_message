@@ -75,7 +75,7 @@ class AvroMessageSchemas:
             if this_namespace == namespace:
                 return this_schema
 
-        raise KeyError('Unable to locate schema with namespace "' + str(namespace))
+        raise EmeraldSchemaParsingException('Unable to locate schema with namespace "' + str(namespace))
 
     def get_matching_schema_record_by_family_and_name(self,
                                                       schema_family: AvroMessageSchemaFamily,
@@ -87,13 +87,14 @@ class AvroMessageSchemas:
                     this_schema_record.avro_schema_name == schema_name:
                 return this_schema_record
 
-        raise KeyError('Unable to match schema entry against the matching criteria' +
-                       os.linesep + '\tFamily to match: ' + schema_family.name +
-                       os.linesep + '\tName to match: ' + schema_name +
-                       os.linesep + 'Values known: ' + os.linesep + '\t' +
-                       (os.linesep + '\t').join(
-                           [x.avro_schema_family_name.name + ': ' + x.avro_schema_name
-                            for x in self._avro_schema_list]))
+        raise EmeraldSchemaParsingException(
+            'Unable to match schema entry against the matching criteria' +
+            os.linesep + '\tFamily to match: ' + schema_family.name +
+            os.linesep + '\tName to match: ' + schema_name +
+            os.linesep + 'Values known: ' + os.linesep + '\t' +
+            (os.linesep + '\t').join(
+                [x.avro_schema_family_name.name + ': ' + x.avro_schema_name
+                 for x in self._avro_schema_list]))
 
     def get_schema_by_family_and_name(self,
                                       schema_family: AvroMessageSchemaFamily,
