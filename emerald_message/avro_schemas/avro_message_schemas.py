@@ -286,7 +286,3 @@ class AvroMessageSchemaFrozen:
             debug=False,
             schema_extension='.avsc')
         )
-
-    def __init__(self):
-        print('Initializing frozen')
-        raise AssertionError('debug')

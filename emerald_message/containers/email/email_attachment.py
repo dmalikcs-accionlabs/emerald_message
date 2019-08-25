@@ -1,6 +1,7 @@
 import os
 from spooky import hash128
 from dataclasses import dataclass
+from typing import Dict
 
 from emerald_message.containers.abstract_container import AbstractContainer, ContainerSchemaMatchingIdentifier, \
     ContainerParameters
@@ -41,8 +42,9 @@ class EmailAttachment(AbstractContainer):
                'Content hash128"' + str(hash128(self.contents_base64)).encode('utf-8').hex() + '"'
 
     # use spooky hash in 128 bit length as the attachments could be quite large - no collisions!
+    #  then we can hash the string rendering normally
     def __hash__(self):
-        return hash128(self.filename).update(self.mimetype).update(self.contents_base64)
+        return hash(str(self))
 
     def __eq__(self, other):
         if not isinstance(other, EmailAttachment):
@@ -59,6 +61,9 @@ class EmailAttachment(AbstractContainer):
             return False
 
         return True
+
+    def __ne__(self, other):
+        return not  self.__eq__(other)
 
     def __lt__(self, other):
         if not isinstance(other, EmailAttachment):
@@ -124,11 +129,11 @@ class EmailAttachment(AbstractContainer):
         # getting here means they are equal
         return False
 
-    def __le__(self, other):
-        return not (__gt__(self, other))
-
     def __ge__(self, other):
-        return not (__lt__(self, other))
+        return not self.__lt__(other)
+
+    def __le__(self, other):
+        return not self.__gt__(other)
 
     @classmethod
     def get_container_schema_matching_identifier(cls) -> ContainerSchemaMatchingIdentifier:
@@ -137,41 +142,45 @@ class EmailAttachment(AbstractContainer):
             container_avro_schema_name='EmailAttachment'
         )
 
-    def write_avro(self,
-                   avro_container_uri: str):
-        data_dictionary = \
+    def get_as_dict(self) -> Dict:
+        return \
             {
                 "filename": self.filename,
                 "mimetype": self.mimetype,
                 "contents_base64": self.contents_base64
             }
 
+    def write_avro(self,
+                   avro_container_uri: str):
         type(self)._write_avro_data(self,
                                     avro_container_uri=avro_container_uri,
-                                    data_as_dictionary=data_dictionary
+                                    data_as_dictionary=self.get_as_dict()
                                     )
 
     @staticmethod
-    def from_avro(avro_container_uri: str,
-                  debug: bool = False):
+    def from_avro_as_dict(avro_parameter_dict: Dict):
+        try:
+            new_email_attachment = \
+                EmailAttachment(container_parameters=
+                                EmailAttachmentParameters(filename=avro_parameter_dict['filename'],
+                                                          mimetype=avro_parameter_dict['mimetype'],
+                                                          contents_base64=avro_parameter_dict['contents_base64']))
+        except KeyError as kex:
+            raise EmeraldMessageDeserializationError(
+                'Unable to load object from AVRO dictionary ' + os.linesep + str(avro_parameter_dict) +
+                os.linesep + 'Unable to locate one or more keys in the data' +
+                os.linesep + 'Returned data parameter count = ' + str(len(avro_parameter_dict)) +
+                os.linesep + 'Cannot locate key "' + str(kex.args[0]) + '" in data' +
+                os.linesep + 'Key(s) found: ' + ','.join([str(k) for k, v in avro_parameter_dict.items()])
+            )
+        return new_email_attachment
+
+    @staticmethod
+    def from_avro(avro_container_uri: str):
         # pass up the exceptions
         datum_to_load = AbstractContainer._from_avro_generic(avro_container_uri=avro_container_uri)
 
-        try:
-            new_email_body = \
-                EmailAttachment(container_parameters=
-                                EmailAttachmentParameters(filename=datum_to_load['filename'],
-                                                          mimetype=datum_to_load['mimetype'],
-                                                          contents_base64=datum_to_load['contents_base64']))
-        except KeyError as kex:
-            raise EmeraldMessageDeserializationError(
-                'Unable to load object from AVRO container "' + avro_container_uri +
-                os.linesep + 'Unable to locate one or more keys in the data' +
-                os.linesep + 'Returned data parameter count = ' + str(len(datum_to_load)) +
-                os.linesep + 'Cannot locate key "' + str(kex.args[0]) + '" in data' +
-                os.linesep + 'Key(s) found: ' + ','.join([str(k) for k, v in datum_to_load.items()])
-            )
-        return new_email_body
+        return EmailAttachment.from_avro_as_dict(datum_to_load)
 
     #
     #  see design note inside the constructor - the parameters really could have been named tuples just

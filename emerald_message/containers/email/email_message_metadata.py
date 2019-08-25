@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict
 from emerald_message.containers.abstract_container import AbstractContainer, ContainerSchemaMatchingIdentifier, \
     ContainerParameters
 from emerald_message.avro_schemas.avro_message_schema_family import AvroMessageSchemaFamily
@@ -102,7 +102,7 @@ class EmailMessageMetadata(AbstractContainer):
         return True
 
     def __ne__(self, other):
-        return not (__eq__(self, other))
+        return not self.__eq__(other)
 
     def __lt__(self, other):
         if not isinstance(other, EmailMessageMetadata):
@@ -238,11 +238,11 @@ class EmailMessageMetadata(AbstractContainer):
         # all are equal so false
         return False
 
-    def __le__(self, other):
-        return not (__gt__(self, other))
-
     def __ge__(self, other):
-        return not (__lt__(self, other))
+        return not self.__lt__(other)
+
+    def __le__(self, other):
+        return not self.__gt__(other)
 
     @classmethod
     def get_container_schema_matching_identifier(cls) -> ContainerSchemaMatchingIdentifier:
@@ -255,13 +255,8 @@ class EmailMessageMetadata(AbstractContainer):
     def _get_container_parameters_required_subclass_type(cls):
         return EmailMessageMetadataParameters
 
-    def write_avro(self,
-                   avro_container_uri: str):
-        # remember that the array of addreess_to_collection must go out as a list to be serialized by the python
-        #  library for Avro.  In all our comparison code for this class we always convert from frozenset  to list
-        #  and sort for purposes of comparison
-        #  We serialize IP addreess into a string
-        data_as_dictionary = \
+    def get_as_dict(self) -> Dict:
+        return \
             {
                 "router_source_tag": self.router_source_tag,
                 "routed_timestamp_iso8601": self.routed_timestamp_iso8601,
@@ -272,40 +267,50 @@ class EmailMessageMetadata(AbstractContainer):
                 "email_dkim_sender_passed": self.email_dkim_sender_passed
             }
 
+    def write_avro(self,
+                   avro_container_uri: str):
+        # remember that the array of addreess_to_collection must go out as a list to be serialized by the python
+        #  library for Avro.  In all our comparison code for this class we always convert from frozenset  to list
+        #  and sort for purposes of comparison
+        #  We serialize IP addreess into a string
         type(self)._write_avro_data(self,
-                                    data_as_dictionary=data_as_dictionary,
+                                    data_as_dictionary=self.get_as_dict(),
                                     avro_container_uri=avro_container_uri)
 
     @staticmethod
-    def from_avro(avro_container_uri: str,
-                  debug: bool = False):
-        # pass up the exceptions
-        datum_to_load = AbstractContainer._from_avro_generic(avro_container_uri=avro_container_uri)
-
+    def from_avro_as_dict(avro_parameter_dict: Dict):
         # we deserialize the IP address from a string
         try:
-            new_email_body = \
+            new_email_message_metadata = \
                 EmailMessageMetadata(
                     container_parameters=
                     EmailMessageMetadataParameters(
-                        router_source_tag=datum_to_load['router_source_tag'],
-                        routed_timestamp_iso8601=datum_to_load['routed_timestamp_iso8601'],
-                        email_sender_ip=IPAddress(datum_to_load['email_sender_ip']),
-                        attachment_count=datum_to_load['attachment_count'],
-                        email_headers=datum_to_load['email_headers'],
-                        email_spf_sender_passed=datum_to_load['email_spf_sender_passed'],
-                        email_dkim_sender_passed=datum_to_load['email_dkim_sender_passed']
+                        router_source_tag=avro_parameter_dict['router_source_tag'],
+                        routed_timestamp_iso8601=avro_parameter_dict['routed_timestamp_iso8601'],
+                        email_sender_ip=IPAddress(avro_parameter_dict['email_sender_ip']),
+                        attachment_count=avro_parameter_dict['attachment_count'],
+                        email_headers=avro_parameter_dict['email_headers'],
+                        email_spf_sender_passed=avro_parameter_dict['email_spf_sender_passed'],
+                        email_dkim_sender_passed=avro_parameter_dict['email_dkim_sender_passed']
                     )
                 )
         except KeyError as kex:
             raise EmeraldMessageDeserializationError(
-                'Unable to load object from AVRO container "' + avro_container_uri +
+                'Unable to load object from AVRO dictionary ' + os.linesep + str(avro_parameter_dict) +
                 os.linesep + 'Unable to locate one or more keys in the data' +
-                os.linesep + 'Returned data parameter count = ' + str(len(datum_to_load)) +
+                os.linesep + 'Returned data parameter count = ' + str(len(avro_parameter_dict)) +
                 os.linesep + 'Cannot locate key "' + str(kex.args[0]) + '" in data' +
-                os.linesep + 'Key(s) found: ' + ','.join([str(k) for k, v in datum_to_load.items()])
+                os.linesep + 'Key(s) found: ' + ','.join([str(k) for k, v in avro_parameter_dict.items()])
             )
-        return new_email_body
+        return new_email_message_metadata
+
+
+    @staticmethod
+    def from_avro(avro_container_uri: str):
+        # pass up the exceptions
+        datum_to_load = AbstractContainer._from_avro_generic(avro_container_uri=avro_container_uri)
+
+        return EmailMessageMetadata.from_avro_as_dict(datum_to_load)
 
     #
     #  see design note inside the constructor - the parameters really could have been named tuples just

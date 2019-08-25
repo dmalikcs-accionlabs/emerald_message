@@ -76,6 +76,13 @@ class AbstractContainer(metaclass=ABCMeta):
     def _get_container_parameters(self):
         return self._container_parameters
 
+    #
+    # The implementing class must store the parameters as a dictionary so elements can be written into
+    #  complex elements
+    @abstractmethod
+    def get_as_dict(self) -> Dict:
+        pass
+
     # The implementing classes will use this write_avro and set their data_dictionary based on parameters
     #  Then they will call _write_avro_data to keep one implementation
     @abstractmethod
@@ -121,8 +128,12 @@ class AbstractContainer(metaclass=ABCMeta):
     #
     @staticmethod
     @abstractmethod
-    def from_avro(avro_container_uri: str,
-                  debug: bool = False):
+    def from_avro(avro_container_uri: str):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def from_avro_as_dict(avro_parameter_dict: Dict):
         pass
 
     @staticmethod

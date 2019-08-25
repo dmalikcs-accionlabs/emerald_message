@@ -5,7 +5,7 @@
   "doc": "Container object encapsulating entire email and any associated attachments",
   "fields": [
     {
-      "name": "email_container_metadata",
+      "name": "email_message_metadata",
       "type": "EmailMessageMetadata"
     },
     {

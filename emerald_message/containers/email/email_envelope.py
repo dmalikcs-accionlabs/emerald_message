@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
-from typing import FrozenSet
+from typing import FrozenSet, Dict
+
 from emerald_message.containers.abstract_container import AbstractContainer, ContainerSchemaMatchingIdentifier, \
     ContainerParameters
 from emerald_message.avro_schemas.avro_message_schema_family import AvroMessageSchemaFamily
@@ -65,7 +66,7 @@ class EmailEnvelope(AbstractContainer):
         return True
 
     def __ne__(self, other):
-        return not (__eq__(self, other))
+        return not  self.__eq__(other)
 
     def __lt__(self, other):
         if not isinstance(other, EmailEnvelope):
@@ -130,10 +131,10 @@ class EmailEnvelope(AbstractContainer):
         return False
 
     def __ge__(self, other):
-        return not (__lt__(self, other))
+        return not self.__lt__(other)
 
     def __le__(self, other):
-        return not (__gt__(self, other))
+        return not self.__gt__(other)
 
     @classmethod
     def get_container_schema_matching_identifier(cls) -> ContainerSchemaMatchingIdentifier:
@@ -146,12 +147,8 @@ class EmailEnvelope(AbstractContainer):
     def _get_container_parameters_required_subclass_type(cls):
         return EmailEnvelopeParameters
 
-    def write_avro(self,
-                   avro_container_uri: str):
-        # remember that the array of addreess_to_collection must go out as a list to be serialized by the python
-        #  library for Avro.  In all our comparison code for this class we always convert from frozenset  to list
-        #  and sort for purposes of comparison
-        data_as_dictionary = \
+    def get_as_dict(self) -> Dict:
+        return \
             {
                 "address_from": self.address_from,
                 "address_to_collection": sorted(self.address_to_collection),
@@ -159,9 +156,38 @@ class EmailEnvelope(AbstractContainer):
                 "message_rx_timestamp_iso8601": self.message_rx_timestamp_iso8601
             }
 
+    def write_avro(self,
+                   avro_container_uri: str):
+        # remember that the array of addreess_to_collection must go out as a list to be serialized by the python
+        #  library for Avro.  In all our comparison code for this class we always convert from frozenset  to list
+        #  and sort for purposes of comparison
         type(self)._write_avro_data(self,
-                                    data_as_dictionary=data_as_dictionary,
+                                    data_as_dictionary=self.get_as_dict(),
                                     avro_container_uri=avro_container_uri)
+
+    @staticmethod
+    def from_avro_as_dict(avro_parameter_dict: Dict):
+        try:
+            new_email_envelope = \
+                EmailEnvelope(
+                    container_parameters=
+                    EmailEnvelopeParameters(
+                        address_from=avro_parameter_dict['address_from'],
+                        address_to_collection=frozenset(avro_parameter_dict['address_to_collection']),
+                        message_subject=avro_parameter_dict['message_subject'],
+                        message_rx_timestamp_iso8601=avro_parameter_dict['message_rx_timestamp_iso8601']
+                    )
+                )
+        except KeyError as kex:
+            raise EmeraldMessageDeserializationError(
+                'Unable to load object from AVRO dictionary ' + os.linesep + str(avro_parameter_dict) +
+                os.linesep + 'Unable to locate one or more keys in the data' +
+                os.linesep + 'Returned data parameter count = ' + str(len(avro_parameter_dict)) +
+                os.linesep + 'Cannot locate key "' + str(kex.args[0]) + '" in data' +
+                os.linesep + 'Key(s) found: ' + ','.join([str(k) for k, v in avro_parameter_dict.items()])
+            )
+
+        return new_email_envelope
 
     @staticmethod
     def from_avro(avro_container_uri: str,
@@ -169,26 +195,7 @@ class EmailEnvelope(AbstractContainer):
         # pass up the exceptions
         datum_to_load = AbstractContainer._from_avro_generic(avro_container_uri=avro_container_uri)
 
-        try:
-            new_email_body = \
-                EmailEnvelope(
-                    container_parameters=
-                    EmailEnvelopeParameters(
-                        address_from=datum_to_load['address_from'],
-                        address_to_collection=frozenset(datum_to_load['address_to_collection']),
-                        message_subject=datum_to_load['message_subject'],
-                        message_rx_timestamp_iso8601=datum_to_load['message_rx_timestamp_iso8601']
-                    )
-                )
-        except KeyError as kex:
-            raise EmeraldMessageDeserializationError(
-                'Unable to load object from AVRO container "' + avro_container_uri +
-                os.linesep + 'Unable to locate one or more keys in the data' +
-                os.linesep + 'Returned data parameter count = ' + str(len(datum_to_load)) +
-                os.linesep + 'Cannot locate key "' + str(kex.args[0]) + '" in data' +
-                os.linesep + 'Key(s) found: ' + ','.join([str(k) for k, v in datum_to_load.items()])
-            )
-        return new_email_body
+        return EmailEnvelope.from_avro_as_dict(datum_to_load)
 
     #
     #  see design note inside the constructor - the parameters really could have been named tuples just

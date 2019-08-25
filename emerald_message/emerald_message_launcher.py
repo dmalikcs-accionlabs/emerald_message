@@ -7,6 +7,7 @@ import pkg_resources
 
 from pytz import timezone
 from netaddr import IPAddress
+from werkzeug.datastructures import ImmutableList
 
 from emerald_message.exitcode import ExitCode
 from emerald_message.error import EmeraldMessageContainerInitializationError
@@ -17,6 +18,7 @@ from emerald_message.containers.email.email_body import EmailBody, EmailBodyPara
 from emerald_message.containers.email.email_attachment import EmailAttachment, EmailAttachmentParameters
 from emerald_message.containers.email.email_envelope import EmailEnvelope, EmailEnvelopeParameters
 from emerald_message.containers.email.email_message_metadata import EmailMessageMetadata, EmailMessageMetadataParameters
+from emerald_message.containers.email.email_container import EmailContainer, EmailContainerParameters
 
 MIN_PYTHON_VER_MAJOR = 3
 MIN_PYTHON_VER_MINOR = 7
@@ -105,7 +107,7 @@ def emerald_message_launcher(argv):
         else:
             print('The new version = ' + str(new_version))
             print('Compare test for body = ' + str(new_version == the_email_body))
-            AssertionError(new_version == the_email_body)
+            print(os.linesep)
 
         # again  EmailEnvelope
         # random testing
@@ -122,7 +124,7 @@ def emerald_message_launcher(argv):
             logger.logger.critical('Unable to initialize email test envelope  object' + os.linesep +
                                    'Error details: ' + str(mex.args[0]))
             return ExitCode.CodeError
-        logger.logger.info('email attach test = ' + os.linesep + str(the_email_envelope) + os.linesep)
+        logger.logger.info('email envelope test = ' + os.linesep + str(the_email_envelope) + os.linesep)
         logger.logger.info('AVRO schema namespaces: ' + os.linesep +
                            os.linesep.join([x for x in sorted(
                                AvroMessageSchemaFrozen.avro_schema_collection.avro_schema_namespaces)]))
@@ -139,8 +141,8 @@ def emerald_message_launcher(argv):
             return ExitCode.CodeError
         else:
             print('The new version = ' + str(new_version_envelope))
-            print('Compare test for body = ' + str(new_version_envelope == the_email_envelope))
-            AssertionError(new_version_envelope == the_email_envelope)
+            print('Compare test for envelope = ' + str(new_version_envelope == the_email_envelope))
+            print(os.linesep)
 
         # again EmailMessageMetadata
         # random testing
@@ -157,10 +159,10 @@ def emerald_message_launcher(argv):
                     email_dkim_sender_passed=None
                 ))
         except EmeraldMessageContainerInitializationError as mex:
-            logger.logger.critical('Unable to initialize email test attach  object' + os.linesep +
+            logger.logger.critical('Unable to initialize email test metadata  object' + os.linesep +
                                    'Error details: ' + str(mex.args[0]))
             return ExitCode.CodeError
-        logger.logger.info('email attach test = ' + os.linesep + str(the_email_metadata) + os.linesep)
+        logger.logger.info('email metadata test = ' + os.linesep + str(the_email_metadata) + os.linesep)
         logger.logger.info('AVRO schema namespaces: ' + os.linesep +
                            os.linesep.join([x for x in sorted(
                                AvroMessageSchemaFrozen.avro_schema_collection.avro_schema_namespaces)]))
@@ -177,8 +179,8 @@ def emerald_message_launcher(argv):
             return ExitCode.CodeError
         else:
             print('The new version = ' + str(new_version_metadata))
-            print('Compare test for body = ' + str(new_version_metadata == the_email_metadata))
-            AssertionError(new_version_metadata == the_email_metadata)
+            print('Compare test for metadata = ' + str(new_version_metadata == the_email_metadata))
+            print(os.linesep)
 
         # again EmailAttachment
         # random testing
@@ -211,8 +213,47 @@ def emerald_message_launcher(argv):
             return ExitCode.CodeError
         else:
             print('The new version = ' + str(new_version_attach))
-            print('Compare test for body = ' + str(new_version_attach == the_email_attachment))
-            AssertionError(new_version_attach == the_email_attachment)
+            print('Compare test for attachmment = ' + str(new_version_attach == the_email_attachment))
+            print(os.linesep)
+
+        # again EmailContainer
+        # random testing
+        try:
+            the_email_container = \
+                EmailContainer(container_parameters=EmailContainerParameters(
+                    email_message_metadata=the_email_metadata,
+                    email_envelope=the_email_envelope,
+                    email_body=the_email_body,
+                    email_attachment_collection=frozenset([the_email_attachment])
+                ))
+        except EmeraldMessageContainerInitializationError as mex:
+            logger.logger.critical('Unable to initialize email test container  object' + os.linesep +
+                                   'Error details: ' + str(mex.args[0]))
+            return ExitCode.CodeError
+        logger.logger.info('email container test = ' + os.linesep + str(the_email_container) + os.linesep)
+#        logger.logger.info('email attach test attach len = ' +
+#                           str(len(the_email_container.email_attachment_collection)))
+        logger.logger.info('AVRO schema namespaces: ' + os.linesep +
+                           os.linesep.join([x for x in sorted(
+                               AvroMessageSchemaFrozen.avro_schema_collection.avro_schema_namespaces)]))
+        # now write
+        output_fn = '/Users/davidthompson/Documents/hello_container.avro'
+        the_email_container.write_avro(output_fn)
+
+        # now read back
+        logger.logger.info('Now reading container from ' + output_fn)
+        try:
+            new_version_container = EmailContainer.from_avro(output_fn)
+        except FileNotFoundError as fex:
+            logger.logger.critical('Unable to locate avro object for reading' + os.linesep +
+                                   'Error details: ' + str(fex.args))
+            return ExitCode.CodeError
+        else:
+            print('The orig version = ' + os.linesep + str(the_email_container) + os.linesep +
+                  str(hash(the_email_container)) + os.linesep)
+            print('The new version = ' + os.linesep + str(new_version_container) + os.linesep +
+                  str(hash(new_version_container)) + os.linesep)
+            print('Compare test for container = ' + str(new_version_container == the_email_container))
 
         return ExitCode.Success
 

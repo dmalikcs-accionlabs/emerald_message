@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Optional, List
 from spooky import hash128
+from typing import Dict
 
 from emerald_message.containers.abstract_container import AbstractContainer, ContainerSchemaMatchingIdentifier, \
     ContainerParameters
@@ -52,37 +53,42 @@ class EmailBody(AbstractContainer):
     def _get_container_parameters_required_subclass_type(cls):
         return EmailBodyParameters
 
-    def write_avro(self,
-                   avro_container_uri: str):
-        data_as_dictionary = \
+    def get_as_dict(self) -> Dict:
+        return \
             {
                 "message_body_text": self.message_body_text,
                 "message_body_html": self.message_body_html
             }
+
+    def write_avro(self,
+                   avro_container_uri: str):
         type(self)._write_avro_data(self,
-                                    data_as_dictionary=data_as_dictionary,
+                                    data_as_dictionary=self.get_as_dict(),
                                     avro_container_uri=avro_container_uri)
 
     @staticmethod
-    def from_avro(avro_container_uri: str,
-                  debug: bool = False):
-        # pass up the exceptions
-        datum_to_load = AbstractContainer._from_avro_generic(avro_container_uri=avro_container_uri)
-
+    def from_avro_as_dict(avro_parameter_dict: Dict):
         try:
             new_email_body = \
                 EmailBody(container_parameters=
-                          EmailBodyParameters(message_body_text=datum_to_load['message_body_text'],
-                                              message_body_html=datum_to_load['message_body_html']))
+                          EmailBodyParameters(message_body_text=avro_parameter_dict['message_body_text'],
+                                              message_body_html=avro_parameter_dict['message_body_html']))
         except KeyError as kex:
             raise EmeraldMessageDeserializationError(
-                'Unable to load object from AVRO container "' + avro_container_uri +
+                'Unable to load object from AVRO dictionary ' + os.linesep + str(avro_parameter_dict) +
                 os.linesep + 'Unable to locate one or more keys in the data' +
-                os.linesep + 'Returned data parameter count = ' + str(len(datum_to_load)) +
+                os.linesep + 'Returned data parameter count = ' + str(len(avro_parameter_dict)) +
                 os.linesep + 'Cannot locate key "' + str(kex.args[0]) + '" in data' +
-                os.linesep + 'Key(s) found: ' + ','.join([str(k) for k, v in datum_to_load.items()])
+                os.linesep + 'Key(s) found: ' + ','.join([str(k) for k, v in avro_parameter_dict.items()])
             )
         return new_email_body
+
+    @staticmethod
+    def from_avro(avro_container_uri: str):
+        # pass up the exceptions
+        datum_to_load = AbstractContainer._from_avro_generic(avro_container_uri=avro_container_uri)
+
+        return EmailBody.from_avro_as_dict(datum_to_load)
 
     @property
     def length_html(self) -> int:
@@ -124,9 +130,7 @@ class EmailBody(AbstractContainer):
     def __hash__(self):
         # if there is no html, omit from the calculation as you can't take hash of None
         # the stripped
-        return hash128(self.message_body_text).update(self.message_body_html) \
-            if self.message_body_html is not None \
-            else hash128(self.message_body_text)
+        return hash(str(self))
 
     def __eq__(self, other):
         if not isinstance(other, EmailBody):
@@ -142,7 +146,7 @@ class EmailBody(AbstractContainer):
         return True
 
     def __ne__(self, other):
-        return not (__eq__(self, other))
+        return not  self.__eq__(other)
 
     def __lt__(self, other):
         #  the LT method is needed for sorting message body objects.  In reality, as text blobs
@@ -207,7 +211,8 @@ class EmailBody(AbstractContainer):
         raise AssertionError('Unexpected endpoint reached in comparison for type "' + EmailBody.__name__ + '"')
 
     def __ge__(self, other):
-        return not (__lt__(self, other))
+        return not self.__lt__(other)
 
     def __le__(self, other):
-        return not (__gt__(self, other))
+        return not self.__gt__(other)
+
