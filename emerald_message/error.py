@@ -51,3 +51,6 @@ class EmeraldEmailParsingError(EmeraldError):
 
 class EmeraldSchemaParsingException(EmeraldError):
     pass
+
+class EmeraldMessageContainerInitializationError(EmeraldError):
+    pass

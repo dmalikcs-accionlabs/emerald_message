@@ -8,10 +8,11 @@ import pkg_resources
 from pytz import timezone
 
 from emerald_message.exitcode import ExitCode
-from emerald_message.error import EmeraldSchemaParsingException
+from emerald_message.error import EmeraldMessageContainerInitializationError
 from emerald_message.logging.logger import EmeraldLogger
 from emerald_message.version import __version__
-from emerald_message.avro_schemas.avro_message_schemas import AvroMessageSchemas
+from emerald_message.avro_schemas.avro_message_schemas import AvroMessageSchemaFrozen
+from emerald_message.containers.email.email_body import EmailBody
 
 MIN_PYTHON_VER_MAJOR = 3
 MIN_PYTHON_VER_MINOR = 7
@@ -49,9 +50,6 @@ def emerald_message_launcher(argv):
     parser.add_argument('--version',
                         action='version',
                         version=__version__)
-    parser.add_argument('--test',
-                        action='store',
-                        help='Just an arg')
     parser.add_argument('--list_avro_schemas',
                         action='store_true',
                         help='Specify to list the supported AVRO schema(s)')
@@ -75,22 +73,30 @@ def emerald_message_launcher(argv):
 
     if args.list_avro_schemas is True:
         logger.logger.info('Running list avro schema_email')
-        try:
-            avro_schemas = AvroMessageSchemas(debug=True)
-        except FileNotFoundError as fex:
-            logger.logger.critical('Unable to locate specified schema subfolder "'  +
-                                   str(os.path.basename(fex.filename)) +
-                                   '"')
-            return ExitCode.ArgumentError
-        except EmeraldSchemaParsingException as spex:
-            logger.logger.critical(str(spex))
-            return  ExitCode.CodeError
-        except Exception as ex:
-            logger.logger.critical('Exception of type ' + type(ex).__name__ + os.linesep +
-                                   'Exception info: ' + str(ex.args))
 
+        # random testing
+        try:
+            the_email_body = EmailBody(message_body_text='Hello World EVEN MORE',
+                                       message_body_html='GOGOGO')
+        except EmeraldMessageContainerInitializationError as mex:
+            logger.logger.critical('Unable to initialize email test object' + os.linesep +
+                                   'Error details: ' + str(mex.args))
+            return ExitCode.CodeError
+        logger.logger.info('email body test = ' + os.linesep + str(the_email_body) + os.linesep)
         logger.logger.info('AVRO schema namespaces: ' + os.linesep +
-                           os.linesep.join([x for x in sorted(avro_schemas.avro_schema_namespaces)]))
+                           os.linesep.join([x for x in sorted(AvroMessageSchemaFrozen.avro_schema_collection.avro_schema_namespaces)]))
+        # now write
+        the_email_body.write_avro('/Users/davidthompson/Documents/hello.avro')
+
+        # now read back
+        try:
+            new_version = EmailBody.from_avro('/Users/davidthompson/Documents/hello.avro')
+        except FileNotFoundError as fex:
+            logger.logger.critical('Unable to locate avro object for reading' + os.linesep +
+                                   'Error details: ' + str(fex.args))
+            return ExitCode.CodeError
+        else:
+            print('The new version = ' + str(new_version))
         return ExitCode.Success
 
     return ExitCode.Success

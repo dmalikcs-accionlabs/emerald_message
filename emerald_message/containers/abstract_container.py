@@ -1,46 +1,70 @@
+import os
 import avro.schema
-import json
+from dataclasses import dataclass
 from abc import ABCMeta, abstractmethod
+from typing import Optional
 
-from emerald_message.avro_schemas.avro_message_schemas import AvroMessageSchemas
+from emerald_message.avro_schemas.avro_message_schema_family import AvroMessageSchemaFamily
+from emerald_message.avro_schemas.avro_message_schemas import AvroMessageSchemas, \
+    AvroMessageSchemaFrozen, AvroMessageSchemaRecord
+from emerald_message.error import EmeraldMessageContainerInitializationError
+
+
+@dataclass(frozen=True)
+class ContainerSchemaMatchingIdentifier:
+    container_avro_schema_family_name: AvroMessageSchemaFamily
+    container_avro_schema_name: str
+
 
 class AbstractContainer(metaclass=ABCMeta):
-    @classmethod
-    @abstractmethod
-    def get_avro_schema_filename(cls) -> str:
-        pass
+    @property
+    def debug(self) -> bool:
+        return self._debug
 
+    # we define in one place the mechanism for getting the AvroMessageSchemaRecord but note
+    #  how it depends on the abstract methods implemented by the implementing classes
+    #  Because the classes implementing this abstract class are dataclasses, you can't set properties in init
     @classmethod
-    def get_avro_schema(cls) -> avro.schema.RecordSchema:
-        # all of the avro_schemas are stored in a package directory called avro_schemas (we use blank __init__.py to
-        #  allow us to do relative imports
-        #  we use MANIFEST.in and setup.py config to ensure these get pulled into the distribution files
-        #  Find the schema file name identified by the implementing class' schema filename
-        #
-        #  DET NOTE:
-        #  Use twisted's getModule to find the files as it is a bit more tolerant of zip vs directory packages
-        #  ALso note at present this assumes the class making the request is in a SUBFOLDEER relative
-        #  to this.  One could do comparisons on the filepath and adjust the number of pareent() calls if needed
-        #
-        avro_schema_filename = cls.get_avro_schema_filename()
-        print('Using avro filename = ' + avro_schema_filename)
-        if type(avro_schema_filename) is not str or len(avro_schema_filename) == 0:
-            raise EnvironmentError('Unable to locate the required avro schema filename for class "' +
-                                   cls.__name__ + '" - unable to proceed')
-        return \
-            avro.schema.Parse(
-                json.dumps(
-                    json.load(
-                        pkg_resources.open_text(avro_schemas, avro_schema_filename)
-                    )
-                )
-            )
+    def get_avro_schema_record(cls) -> AvroMessageSchemaRecord:
+        return AvroMessageSchemaFrozen.avro_schema_collection.get_matching_schema_record_by_family_and_name(
+            schema_family=
+            cls.get_container_schema_matching_identifier().container_avro_schema_family_name,
+            schema_name=cls.get_container_schema_matching_identifier().container_avro_schema_name)
 
     @abstractmethod
-    def write_avro(self):
+    def write_avro(self,
+                   avro_container_uri: str):
         pass
 
     @staticmethod
     @abstractmethod
     def from_avro(avro_container_uri: str):
         pass
+
+    @classmethod
+    @abstractmethod
+    def get_container_schema_matching_identifier(cls) -> ContainerSchemaMatchingIdentifier:
+        pass
+
+    def __init__(self,
+                 debug: bool = False):
+        # The implementing class must determine the namespace for the schema corresponding to this
+        #  This checking really happens after the fact but we provide just in case there are problems
+        #  with a class not implementing one of the required methods
+        #
+        #  There is still limited use for it - if someone literally sets the wrong kind of object in the
+        #  class contract such as get_container_schema_matching_identifier, these errors will trip and halt
+        #  further initialization
+        if not isinstance(type(self).get_container_schema_matching_identifier(), ContainerSchemaMatchingIdentifier):
+            raise EmeraldMessageContainerInitializationError(
+                'Caller must provide the value for ' + ContainerSchemaMatchingIdentifier.__name__ +
+                ' in order to identify the proper AVRO schema for the container')
+
+        if type(type(self).get_container_schema_matching_identifier().container_avro_schema_name) is not str or \
+                len(type(self).get_container_schema_matching_identifier().container_avro_schema_name) == 0:
+            raise EmeraldMessageContainerInitializationError(
+                'Caller must provide a valid name corresponding to a name property in a defined AVRO' +
+                ' schema that corresponds to this container')
+
+        print('Initialized the avro schema record to ' + str(type(self).get_avro_schema_record()))
+        self._debug = debug
