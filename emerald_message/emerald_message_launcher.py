@@ -15,6 +15,7 @@ from emerald_message.version import __version__
 from emerald_message.avro_schemas.avro_message_schemas import AvroMessageSchemaFrozen
 from emerald_message.containers.email.email_body import EmailBody, EmailBodyParameters
 from emerald_message.containers.email.email_attachment import EmailAttachment, EmailAttachmentParameters
+from emerald_message.containers.email.email_envelope import EmailEnvelope, EmailEnvelopeParameters
 
 MIN_PYTHON_VER_MAJOR = 3
 MIN_PYTHON_VER_MINOR = 7
@@ -103,6 +104,44 @@ def emerald_message_launcher(argv):
         else:
             print('The new version = ' + str(new_version))
             print('Compare test for body = '  + str(new_version==the_email_body))
+            AssertionError(new_version==the_email_body)
+
+
+        # again
+        # random testing
+        try:
+            the_email_envelope = \
+                EmailEnvelope(container_parameters=
+                                EmailEnvelopeParameters(
+                                    address_from='det@go.com',
+                                    address_to_collection=frozenset(['gogetem@dynastyse.com', 'another@gogo.com']),
+                                    message_subject='Big Message',
+                                    message_rx_timestamp_iso8601=
+                                    datetime.datetime.strftime(startup_time_utc, '%Y%m%dT%H:%M:%S%z')
+                                ))
+        except EmeraldMessageContainerInitializationError as mex:
+            logger.logger.critical('Unable to initialize email test envelope  object' + os.linesep +
+                                   'Error details: ' + str(mex.args[0]))
+            return ExitCode.CodeError
+        logger.logger.info('email attach test = ' + os.linesep + str(the_email_envelope) + os.linesep)
+        logger.logger.info('AVRO schema namespaces: ' + os.linesep +
+                           os.linesep.join([x for x in sorted(
+                               AvroMessageSchemaFrozen.avro_schema_collection.avro_schema_namespaces)]))
+        # now write
+        output_fn = '/Users/davidthompson/Documents/hello_envelope.avro'
+        the_email_envelope.write_avro(output_fn)
+
+        # now read back
+        try:
+            new_version_envelope = EmailEnvelope.from_avro(output_fn)
+        except FileNotFoundError as fex:
+            logger.logger.critical('Unable to locate avro object for reading' + os.linesep +
+                                   'Error details: ' + str(fex.args))
+            return ExitCode.CodeError
+        else:
+            print('The new version = ' + str(new_version_envelope))
+            print('Compare test for body = '  + str(new_version_envelope==the_email_envelope))
+            AssertionError(new_version_envelope==the_email_envelope)
 
         # again
         # random testing
@@ -137,6 +176,7 @@ def emerald_message_launcher(argv):
         else:
             print('The new version = ' + str(new_version_attach))
             print('Compare test for body = '  + str(new_version_attach==the_email_attachment))
+            AssertionError(new_version_attach==the_email_attachment)
 
 
 

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from emerald_message.containers.abstract_container import AbstractContainer, ContainerSchemaMatchingIdentifier, \
     ContainerParameters
 from emerald_message.avro_schemas.avro_message_schema_family import AvroMessageSchemaFamily
-from emerald_message.error import EmeraldMessageSerializationError, EmeraldMessageDeserializationError
+from emerald_message.error import EmeraldMessageDeserializationError
 
 
 @dataclass(frozen=True)
